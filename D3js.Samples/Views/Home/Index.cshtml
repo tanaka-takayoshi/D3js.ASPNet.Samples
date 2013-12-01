@@ -1,0 +1,76 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewBag.Title</title>
+    <script src="@Url.Content("~/Scripts/jquery-1.10.2.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/modernizr-2.6.2.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/d3.v3.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/d3.helper.js")" type="text/javascript"></script>
+    <style type="text/css">
+    </style>
+</head>
+<body>
+    <svg></svg>
+    <script type="text/javascript">
+        d3.json('/api/ElbAccessSummary', function (data) {
+            var weekday = ["日", "月", "火", "水", "木", "金", "土"];
+
+            var max = data.MaxValue;
+            var min = data.MinValue;
+            var svg = d3.select('svg').data([data.Groups]);
+            var colorScale = d3.scale.linear().domain([0, min, (min + max) / 2, max]).range(["#FFFFFF", "#FFF2F2", "#FF7F7F", "#FF0000"]);
+            var parseDate = d3.time.format.iso.parse;
+            var groupAttr = {
+                transform: function () {
+                    var m = 10;
+                    return function (d, i) {
+                        if (parseDate(d.Key).getDay() == 0) m += 10; //日曜日ごとにY軸のマージンを増加
+                        return "translate(" + [200, m + (i * 16)] + ")";
+                    };
+                }(),
+                width: 10,
+                height: 10
+            };
+
+            var group = svg.selectAll('g') //日付ラベルと一日分のセルを囲むグループ
+                .data(D())
+                .enter()
+                .append('g')
+                .attr(groupAttr);
+
+            var ylabelAttr = {
+                x: -100,
+                y: 10,
+                "text-anchor": "middle",
+                "aligbment-baseline": "center",
+                fill: "black",
+                stroke: "none"
+            };
+
+            var ylabel = group.append('text') //日付ラベル追加
+                .attr(ylabelAttr)
+                .text(function (d) { return parseDate(d.Key).toLocaleDateString() + ":" + weekday[parseDate(d.Key).getDay()]; });
+
+            var rectAttr = {
+                x: F('Hour', '* 20'),
+                y: 0,
+                width: 10,
+                height: 10,
+                fill: F('Y', colorScale)
+            };
+
+            var rect = group.selectAll('rect') //カラーセル追加
+                .data(F('Values'))
+                .enter()
+                .append('rect')
+                .attr(rectAttr);
+
+            rect.append('title').text(function (d) { return parseDate(d.Date).toLocaleDateString() + " " + d.Hour + "時 アクセス:" + d.Y; }); //tooltip追加
+        }).header("Content-Type", "application/json");
+    </script>
+</body>
+</html>
